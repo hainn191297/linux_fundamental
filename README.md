@@ -1,153 +1,155 @@
-# 📘 The Linux Programming Interface — Developer Path (for Golang Backend)
+# The Linux Programming Interface — Developer Path (for Golang Backend)
 
-## 🧭 Mục tiêu tổng
-- Hiểu rõ cơ chế hoạt động của **Linux kernel & syscalls**
-- Nắm cách Linux quản lý **process, thread, file, signal, memory**
-- Biết mapping giữa **Linux API ↔ Go runtime** (`syscall`, `futex`, `epoll`, `clone`)
-- Tự viết các tool backend: daemon, epoll server, IPC service
+## Overall Goals
+- Deeply understand how the **Linux kernel & syscalls** work  
+- Learn how Linux manages **processes, threads, files, signals, and memory**  
+- Understand mapping between **Linux API ↔ Go runtime** (`syscall`, `futex`, `epoll`, `clone`)  
+- Build backend tools: daemon, epoll server, IPC chat service  
 
 ---
 
-## 1️⃣ Linux Fundamentals & System Calls
-**Chương TLPI:** 1–3  
+## Linux Fundamentals & System Calls
+**TLPI Chapters:** 1–3  
 
-### 📖 Nội dung chính
+### Core Concepts
 - Kernel space vs user space  
 - System call flow (`read`, `write`, `open`, `close`)  
 - `errno`, `perror`, glibc, POSIX  
 - Environment variables & process arguments  
 
-### 🧩 Mini Project: `syscall-inspect`
+### Mini Project: `syscall-inspect`
 ```bash
 ./syscall-inspect ls
 ```
-> In ra danh sách system call khi chạy lệnh `ls` (sử dụng `strace`).
+> Display system calls executed by `ls` using `strace`.
 
-### 🧠 Go Mapping
-- `syscall.Open`, `syscall.Read`, ... ↔ POSIX API  
-- Go runtime trực tiếp gọi `clone`, `futex`, `epoll_wait`  
-- Xem `runtime/sys_linux_amd64.s`
+### Go Mapping
+- `syscall.Open`, `syscall.Read`, etc. ↔ POSIX API  
+- Go runtime directly calls `clone`, `futex`, `epoll_wait`  
+- Reference: `runtime/sys_linux_amd64.s`
 
 ---
 
-## 2️⃣ File, Directory & Permissions
-**Chương TLPI:** 4–5, 14–15, 18  
+## File, Directory & Permissions
+**TLPI Chapters:** 4–5, 14–15, 18  
 
-### 📖 Nội dung
+### Core Concepts
 - File descriptor table, open flags, race condition  
 - `readv`, `writev`, `pread`, `pwrite`  
 - File permission bits (`chmod`, `umask`, `access`)  
 - Directory traversal (`opendir`, `readdir`, `nftw`)  
 - Symbolic vs hard links  
 
-### 🧩 Mini Project: `filewalker`
-> Duyệt `/tmp`, in inode, quyền truy cập, kích thước — song song bằng Goroutine + channel.
+### Mini Project: `filewalker`
+> Traverse `/tmp`, print inode, permissions, and size.  
+> Implement parallel traversal with Goroutines + channels.
 
-### 🧠 Go Mapping
+### Go Mapping
 - `os.Open`, `os.Stat`, `filepath.WalkDir`  
-- `io.Reader` ↔ system call `read`  
-- Go runtime buffer = user-space buffering của `stdio`
+- `io.Reader` ↔ `read(2)` syscall  
+- Go runtime buffering = user-space stdio buffering  
 
 ---
 
-## 3️⃣ Process, Signal & Scheduling
-**Chương TLPI:** 6, 20–22, 24–28, 35  
+## Process, Signal & Scheduling
+**TLPI Chapters:** 6, 20–22, 24–28, 35  
 
-### 📖 Nội dung
+### Core Concepts
 - `fork`, `exec`, `wait`, `exit`  
-- Process memory layout, stack frame  
-- Signal (`SIGINT`, `SIGCHLD`, `SIGTERM`)  
-- Process group, session  
-- Scheduling policy: `SCHED_OTHER`, `SCHED_RR`  
+- Process memory layout & stack frame  
+- Signal handling (`SIGINT`, `SIGCHLD`, `SIGTERM`)  
+- Process groups & sessions  
+- Scheduling policies: `SCHED_OTHER`, `SCHED_RR`  
 
-### 🧩 Mini Project: `procmon`
+### Mini Project: `procmon`
 ```bash
 ./procmon sleep 10
 ```
-> Hiển thị PID cha–con và log khi nhận `SIGCHLD`.
+> Show parent-child PIDs and log when `SIGCHLD` is received.
 
-### 🧠 Go Mapping
-- `os.StartProcess()` nội bộ gọi `clone` + `execve`  
-- `os/signal.Notify()` wrap kernel `sigaction`  
-- Goroutine scheduler (M:N) dùng `futex`, `clone`, `sched_yield`
+### Go Mapping
+- `os.StartProcess()` internally invokes `clone` + `execve`  
+- `os/signal.Notify()` wraps `sigaction`  
+- Goroutine scheduler (M:N model) uses `futex`, `clone`, `sched_yield`  
 
 ---
 
-## 4️⃣ Threads, Synchronization & IPC
-**Chương TLPI:** 29–33, 45–48, 53–54  
+## Threads, Synchronization & IPC
+**TLPI Chapters:** 29–33, 45–48, 53–54  
 
-### 📖 Nội dung
+### Core Concepts
 - `pthread_create`, `pthread_join`, mutex, semaphore  
 - System V vs POSIX shared memory (`shmget` vs `shm_open`)  
-- Message queue, semaphore, shared resource  
+- Message queues, semaphores, and shared resources  
 - Race condition prevention  
 
-### 🧩 Mini Project: IPC Chat
-> Chat giữa 2 process qua shared memory + semaphore.
+### Mini Project: IPC Chat
+> Implement interprocess chat using shared memory + semaphore.
 
-### 🧠 Go Mapping
+### Go Mapping
 - Goroutine = user-level thread  
-- `sync.Mutex`, `sync.WaitGroup`, `sync.Cond` tương tự pthread  
-- Runtime sử dụng futex (`sys_futex`) để sleep/wake goroutine
+- `sync.Mutex`, `sync.WaitGroup`, `sync.Cond` similar to pthread primitives  
+- Go runtime uses `futex` (`sys_futex`) for sleeping/waking goroutines  
 
 ---
 
-## 5️⃣ Network Programming & epoll
-**Chương TLPI:** 56–61, 63  
+## Network Programming & epoll
+**TLPI Chapters:** 56–61, 63  
 
-### 📖 Nội dung
+### 📖 Core Concepts
 - `socket`, `bind`, `listen`, `accept`, `connect`  
-- Non-blocking socket, `fcntl(O_NONBLOCK)`  
+- Non-blocking sockets (`fcntl(O_NONBLOCK)`)  
 - `epoll_create`, `epoll_ctl`, `epoll_wait`  
-- Level-triggered vs edge-triggered  
-- select/poll/epoll performance  
+- Level-triggered vs edge-triggered models  
+- Performance comparison: select / poll / epoll  
 
-### 🧩 Mini Project: TCP Echo Server
+### Mini Project: TCP Echo Server
 ```bash
 go run epoll_server.go
 ```
-> Xử lý hàng ngàn connection đồng thời.
+> Handle thousands of concurrent connections using epoll.
 
-### 🧠 Go Mapping
-- Go `netpoller` layer = wrapper quanh `epoll`  
-- Go runtime đăng ký FD với `epoll_ctl`, chờ sự kiện I/O qua `epoll_wait`  
-- Goroutine block I/O → runtime park thread
+### Go Mapping
+- Go `netpoller` layer is built on top of `epoll`  
+- Go runtime registers file descriptors with `epoll_ctl` and waits for I/O events via `epoll_wait`  
+- Blocking I/O goroutines are parked by the runtime scheduler  
 
 ---
 
-## 6️⃣ Daemon, Security & Advanced Topics
-**Chương TLPI:** 37–39, 41–42, 49–50  
+## Daemon, Security & Advanced Topics
+**TLPI Chapters:** 37–39, 41–42, 49–50  
 
-### 📖 Nội dung
+### 📖 Core Concepts
 - Daemonization (detach from terminal, redirect fd)  
-- Logging bằng `syslog`  
-- Privilege dropping (SUID, capabilities)  
+- Logging via `syslog`  
+- Privilege dropping (SUID, Linux capabilities)  
 - `mmap`, `mlock`, `mprotect`  
-- Tạo `.so` shared library  
+- Building shared libraries (`.so`)  
 
-### 🧩 Mini Project: `sysdaemon`
+### Mini Project: `sysdaemon`
 ```bash
 sudo ./sysdaemon
 ```
-> Ghi log I/O event vào `/var/log/sysdaemon.log` chạy ngầm.
+> Background service that logs I/O events into `/var/log/sysdaemon.log`.
 
-### 🧠 Go Mapping
-- `go build -buildmode=c-shared` tạo `.so`  
-- `syscall.Mmap` = wrapper của `mmap(2)`  
-- `setcap` để cấp quyền network port thấp  
-- Go HTTP server chạy như daemon service
-
----
-
-## 📈 Tổng kết
-- Hiểu rõ **Linux syscall → Go runtime**
-- Viết được **daemon, IPC, epoll server**
-- Debug performance bằng `strace`, `perf`, `top`, `lsof`
+### Go Mapping
+- `go build -buildmode=c-shared` produces `.so` shared libraries  
+- `syscall.Mmap` ↔ `mmap(2)` syscall  
+- Capabilities managed via `setcap`  
+- Go HTTP server can be daemonized via systemd or custom launcher  
 
 ---
 
-## 📚 Tài liệu khuyến nghị
+## Summary
+After mastering all sections, you will be able to:
+- Understand **Linux syscalls ↔ Go runtime internals**  
+- Build **daemon, IPC, and epoll-based servers**  
+- Debug and tune performance using `strace`, `perf`, `top`, `lsof`  
+
+---
+
+## Recommended Reading
 - [man7.org/linux/man-pages](https://man7.org/linux/man-pages)  
-- *Operating Systems: Three Easy Pieces* (OSTEP)  
-- *Linux Performance Tools* – Brendan Gregg  
-- Go source: `runtime/netpoll_epoll.go`, `runtime/proc.go`
+- *Operating Systems: Three Easy Pieces (OSTEP)*  
+- *Linux Performance Tools* — Brendan Gregg  
+- Go runtime source: `runtime/netpoll_epoll.go`, `runtime/proc.go`
