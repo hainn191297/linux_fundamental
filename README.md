@@ -1,155 +1,65 @@
-# The Linux Programming Interface — Developer Path (for Golang Backend)
+**Mục Tiêu**
+- Nắm chắc Linux fundamentals từ góc nhìn lập trình hệ thống (process, syscall, errno, kiến trúc kernel/userspace).
+- Dùng Go để thực nghiệm các khái niệm (map syscall sang Go, viết ví dụ nhỏ).
+- Xây dựng một UEBA POC tối thiểu dựa trên kiến thức hệ thống đã học.
 
-## Overall Goals
-- Deeply understand how the **Linux kernel & syscalls** work  
-- Learn how Linux manages **processes, threads, files, signals, and memory**  
-- Understand mapping between **Linux API ↔ Go runtime** (`syscall`, `futex`, `epoll`, `clone`)  
-- Build backend tools: daemon, epoll server, IPC chat service  
+**Cấu Trúc Thư Mục**
+- `fundamental/00-preface` — phần dạo đầu và cách học: `overview.md`, `toolchain.md`, `study-guide.md`.
+- `fundamental/01-fundamentals` — nội dung chính:
+  - `linux-architecture.md` — kiến trúc Linux (user/kernel, process, memory, FS...).
+  - `system-calls.md` — cơ chế system call, vòng đời, ví dụ minh hoạ.
+  - `errno-glibc-posix.md` — lỗi chuẩn, cách tra cứu và xử lý.
+  - `golang-mapping.md` — ánh xạ khái niệm hệ thống sang Go.
+  - `main.go` — mã ví dụ Go để thực nghiệm.
+- `fundamental/01-fundamentals/pet_project-syscall-inspect` — bài thực hành quan sát syscalls.
+- `fundamental/02-files-permissions` — file, quyền truy cập, và duyệt thư mục.
+- `fundamental/03-process-signal-scheduling` — tiến trình, tín hiệu, lịch trình.
+- `fundamental/04-threads-sync-ipc` — threads, đồng bộ, và IPC.
+- `fundamental/05-network-epoll` — socket, non-blocking I/O, epoll (Go netpoll).
+- `fundamental/linux_fundamental_with_go.md` — ghi chú tổng hợp Linux + Go.
+- `fundamental/The Linux Programming Interface.pdf` — tài liệu tham khảo chính (TLPI).
+- `ueba_pet_pj/ueba_foundation.md` — nền tảng và phạm vi POC UEBA.
 
----
+**Yêu Cầu Môi Trường**
+- Go đã cài đặt (khuyến nghị bản mới, ví dụ Go 1.21+).
+- Linux hoặc macOS với công cụ dòng lệnh cơ bản. Nếu dùng Linux, có thể cài thêm `strace` để quan sát syscall.
 
-## Linux Fundamentals & System Calls
-**TLPI Chapters:** 1–3  
+**Chạy Ví Dụ Go**
+- `cd fundamental/01-fundamentals`
+- `go run main.go`
+- Tuỳ chọn build: `go build -o demo && ./demo`
 
-### Core Concepts
-- Kernel space vs user space  
-- System call flow (`read`, `write`, `open`, `close`)  
-- `errno`, `perror`, glibc, POSIX  
-- Environment variables & process arguments  
+**Lộ Trình Học Đề Xuất**
+- Khởi động: đọc `fundamental/00-preface/overview.md`, `toolchain.md`, `study-guide.md` để nắm tổng quan và cách tổ chức ghi chép.
+- Nền tảng Linux:
+  - Đọc `fundamental/01-fundamentals/linux-architecture.md` để có khung kiến trúc.
+  - Nghiên cứu `system-calls.md` và thực nghiệm trong `main.go` (mở, đọc, ghi file; tạo process; xử lý lỗi với errno).
+  - Tham chiếu `errno-glibc-posix.md` khi bắt gặp lỗi; đối chiếu với Go error.
+  - Đọc `golang-mapping.md` để map từ khái niệm hệ thống sang Go (syscall/os, unsafe, v.v.).
+- Tổng hợp: bổ sung ghi chú vào `fundamental/linux_fundamental_with_go.md` với ví dụ code và lệnh minh hoạ.
 
-### Mini Project: `syscall-inspect`
-```bash
-./syscall-inspect ls
-```
-> Display system calls executed by `ls` using `strace`.
+**UEBA POC (Kế Hoạch Tối Thiểu)**
+- Mục tiêu: phát hiện hành vi bất thường của user/entity ở mức cơ bản (ví dụ: trình tự lệnh, truy cập file bất thường, tần suất/giờ bất thường).
+- Phạm vi dữ liệu: bắt đầu với log hệ thống/local (shell history, tiến trình đang chạy, truy cập file) để đơn giản hoá.
+- Pipeline tối thiểu:
+  - Thu thập: script/Go CLI đọc số liệu định kỳ (process list, file access, auth log nếu có).
+  - Đặc trưng: trích xuất feature đơn giản (tần suất lệnh, entropy, outlier theo giờ/ngày).
+  - Phát hiện: baseline thống kê (z-score/IQR) hoặc rule-based trước khi nâng cấp ML.
+  - Cảnh báo: in ra console hoặc ghi `jsonl` để trực quan hóa.
+- Tài liệu: theo dõi ý tưởng và phạm vi tại `ueba_pet_pj/ueba_foundation.md`.
 
-### Go Mapping
-- `syscall.Open`, `syscall.Read`, etc. ↔ POSIX API  
-- Go runtime directly calls `clone`, `futex`, `epoll_wait`  
-- Reference: `runtime/sys_linux_amd64.s`
+**Tiến Độ & TODO**
+- Preface: đọc và ghi chú (đang tiến hành).
+- Fundamentals: hoàn thiện system calls + errno (kế tiếp).
+- Demo Go: cập nhật `main.go` với ví dụ mở/ghi file và xử lý lỗi (kế tiếp).
+- UEBA POC: chốt dữ liệu đầu vào và chỉ số baseline (sau khi xong fundamentals).
 
----
+**Cách Ghi Chép Hiệu Quả**
+- Mỗi mục nội dung nên có ví dụ lệnh/call thực thi kèm đầu ra ngắn gọn.
+- Khi gặp lỗi, ghi lại errno, ngữ cảnh, cách khắc phục và mapping sang Go.
+- Ưu tiên ví dụ nhỏ, độc lập và có thể chạy nhanh từ dòng lệnh.
 
-## File, Directory & Permissions
-**TLPI Chapters:** 4–5, 14–15, 18  
+**Gợi Ý Đọc**
+- `fundamental/The Linux Programming Interface.pdf` (TLPI) — tra cứu chi tiết về API và hành vi hệ thống.
 
-### Core Concepts
-- File descriptor table, open flags, race condition  
-- `readv`, `writev`, `pread`, `pwrite`  
-- File permission bits (`chmod`, `umask`, `access`)  
-- Directory traversal (`opendir`, `readdir`, `nftw`)  
-- Symbolic vs hard links  
-
-### Mini Project: `filewalker`
-> Traverse `/tmp`, print inode, permissions, and size.  
-> Implement parallel traversal with Goroutines + channels.
-
-### Go Mapping
-- `os.Open`, `os.Stat`, `filepath.WalkDir`  
-- `io.Reader` ↔ `read(2)` syscall  
-- Go runtime buffering = user-space stdio buffering  
-
----
-
-## Process, Signal & Scheduling
-**TLPI Chapters:** 6, 20–22, 24–28, 35  
-
-### Core Concepts
-- `fork`, `exec`, `wait`, `exit`  
-- Process memory layout & stack frame  
-- Signal handling (`SIGINT`, `SIGCHLD`, `SIGTERM`)  
-- Process groups & sessions  
-- Scheduling policies: `SCHED_OTHER`, `SCHED_RR`  
-
-### Mini Project: `procmon`
-```bash
-./procmon sleep 10
-```
-> Show parent-child PIDs and log when `SIGCHLD` is received.
-
-### Go Mapping
-- `os.StartProcess()` internally invokes `clone` + `execve`  
-- `os/signal.Notify()` wraps `sigaction`  
-- Goroutine scheduler (M:N model) uses `futex`, `clone`, `sched_yield`  
-
----
-
-## Threads, Synchronization & IPC
-**TLPI Chapters:** 29–33, 45–48, 53–54  
-
-### Core Concepts
-- `pthread_create`, `pthread_join`, mutex, semaphore  
-- System V vs POSIX shared memory (`shmget` vs `shm_open`)  
-- Message queues, semaphores, and shared resources  
-- Race condition prevention  
-
-### Mini Project: IPC Chat
-> Implement interprocess chat using shared memory + semaphore.
-
-### Go Mapping
-- Goroutine = user-level thread  
-- `sync.Mutex`, `sync.WaitGroup`, `sync.Cond` similar to pthread primitives  
-- Go runtime uses `futex` (`sys_futex`) for sleeping/waking goroutines  
-
----
-
-## Network Programming & epoll
-**TLPI Chapters:** 56–61, 63  
-
-### 📖 Core Concepts
-- `socket`, `bind`, `listen`, `accept`, `connect`  
-- Non-blocking sockets (`fcntl(O_NONBLOCK)`)  
-- `epoll_create`, `epoll_ctl`, `epoll_wait`  
-- Level-triggered vs edge-triggered models  
-- Performance comparison: select / poll / epoll  
-
-### Mini Project: TCP Echo Server
-```bash
-go run epoll_server.go
-```
-> Handle thousands of concurrent connections using epoll.
-
-### Go Mapping
-- Go `netpoller` layer is built on top of `epoll`  
-- Go runtime registers file descriptors with `epoll_ctl` and waits for I/O events via `epoll_wait`  
-- Blocking I/O goroutines are parked by the runtime scheduler  
-
----
-
-## Daemon, Security & Advanced Topics
-**TLPI Chapters:** 37–39, 41–42, 49–50  
-
-### 📖 Core Concepts
-- Daemonization (detach from terminal, redirect fd)  
-- Logging via `syslog`  
-- Privilege dropping (SUID, Linux capabilities)  
-- `mmap`, `mlock`, `mprotect`  
-- Building shared libraries (`.so`)  
-
-### Mini Project: `sysdaemon`
-```bash
-sudo ./sysdaemon
-```
-> Background service that logs I/O events into `/var/log/sysdaemon.log`.
-
-### Go Mapping
-- `go build -buildmode=c-shared` produces `.so` shared libraries  
-- `syscall.Mmap` ↔ `mmap(2)` syscall  
-- Capabilities managed via `setcap`  
-- Go HTTP server can be daemonized via systemd or custom launcher  
-
----
-
-## Summary
-After mastering all sections, you will be able to:
-- Understand **Linux syscalls ↔ Go runtime internals**  
-- Build **daemon, IPC, and epoll-based servers**  
-- Debug and tune performance using `strace`, `perf`, `top`, `lsof`  
-
----
-
-## Recommended Reading
-- [man7.org/linux/man-pages](https://man7.org/linux/man-pages)  
-- *Operating Systems: Three Easy Pieces (OSTEP)*  
-- *Linux Performance Tools* — Brendan Gregg  
-- Go runtime source: `runtime/netpoll_epoll.go`, `runtime/proc.go`
+Nếu bạn muốn, tôi có thể bổ sung ví dụ syscall trong `fundamental/01-fundamentals/main.go` và tạo skeleton cho collector UEBA ban đầu.
